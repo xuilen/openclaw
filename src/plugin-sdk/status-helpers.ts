@@ -6,6 +6,10 @@ import {
   applyChannelAccountState,
   resolveChannelAccountState,
 } from "../channels/status/account-state.js";
+import {
+  buildBaseChannelStatusSummary,
+  buildProbeChannelStatusSummary,
+} from "../channels/status/summary.js";
 import type { OpenClawConfig } from "../config/types.openclaw.js";
 // Preserve the shipped Plugin SDK name while the implementation stays canonical.
 export { normalizeOptionalString as asString };
@@ -144,22 +148,6 @@ export function standardNotConfiguredIssue(params: {
   };
 }
 
-function buildComputedAccountStatusAdapterBase<ResolvedAccount, Probe, Audit>(
-  options: Omit<ChannelStatusAdapter<ResolvedAccount, Probe, Audit>, "buildAccountSnapshot">,
-): Omit<ChannelStatusAdapter<ResolvedAccount, Probe, Audit>, "buildAccountSnapshot"> {
-  return {
-    defaultRuntime: options.defaultRuntime,
-    buildChannelSummary: options.buildChannelSummary,
-    probeAccount: options.probeAccount,
-    formatCapabilitiesProbe: options.formatCapabilitiesProbe,
-    auditAccount: options.auditAccount,
-    buildCapabilitiesDiagnostics: options.buildCapabilitiesDiagnostics,
-    logSelfId: options.logSelfId,
-    resolveAccountState: options.resolveAccountState,
-    collectStatusIssues: options.collectStatusIssues,
-  };
-}
-
 /** Create the baseline runtime snapshot shape used by channel/account status stores. */
 export function createDefaultChannelRuntimeState<T extends Record<string, unknown>>(
   accountId: string,
@@ -181,42 +169,7 @@ export function createDefaultChannelRuntimeState<T extends Record<string, unknow
   };
 }
 
-/** Normalize a channel-level status summary so missing lifecycle fields become explicit nulls. */
-export function buildBaseChannelStatusSummary<TExtra extends StatusSnapshotExtra>(
-  snapshot: {
-    configured?: boolean | null;
-    running?: boolean | null;
-    lastStartAt?: number | null;
-    lastStopAt?: number | null;
-    lastError?: string | null;
-  },
-  extra?: TExtra,
-) {
-  // Channel summaries already consume projected account state; this helper only normalizes nulls.
-  return {
-    configured: snapshot.configured ?? false,
-    ...(extra ?? ({} as TExtra)),
-    running: snapshot.running ?? false,
-    lastStartAt: snapshot.lastStartAt ?? null,
-    lastStopAt: snapshot.lastStopAt ?? null,
-    lastError: snapshot.lastError ?? null,
-  };
-}
-
-/** Extend the base summary with probe fields while preserving stable null defaults. */
-export function buildProbeChannelStatusSummary<TExtra extends Record<string, unknown>>(
-  snapshot: Parameters<typeof buildBaseChannelStatusSummary>[0] & {
-    probe?: unknown;
-    lastProbeAt?: number | null;
-  },
-  extra?: TExtra,
-) {
-  return {
-    ...buildBaseChannelStatusSummary(snapshot, extra),
-    probe: snapshot.probe,
-    lastProbeAt: snapshot.lastProbeAt ?? null,
-  };
-}
+export { buildBaseChannelStatusSummary, buildProbeChannelStatusSummary };
 
 /** Build webhook channel summaries with a stable default mode. */
 export function buildWebhookChannelStatusSummary<TExtra extends StatusSnapshotExtra>(
@@ -298,10 +251,11 @@ export function createComputedAccountStatusAdapter<
     ) => ComputedAccountStatusSnapshot<TExtra>;
   },
 ): ChannelStatusAdapter<ResolvedAccount, Probe, Audit> {
+  const { resolveAccountSnapshot, ...adapter } = options;
   return {
-    ...buildComputedAccountStatusAdapterBase(options),
+    ...adapter,
     buildAccountSnapshot: (params) =>
-      buildResolvedComputedAccountStatusSnapshot(params, options.resolveAccountSnapshot(params)),
+      buildResolvedComputedAccountStatusSnapshot(params, resolveAccountSnapshot(params)),
   };
 }
 
@@ -318,13 +272,11 @@ export function createAsyncComputedAccountStatusAdapter<
     ) => Promise<ComputedAccountStatusSnapshot<TExtra>>;
   },
 ): ChannelStatusAdapter<ResolvedAccount, Probe, Audit> {
+  const { resolveAccountSnapshot, ...adapter } = options;
   return {
-    ...buildComputedAccountStatusAdapterBase(options),
+    ...adapter,
     buildAccountSnapshot: async (params) =>
-      buildResolvedComputedAccountStatusSnapshot(
-        params,
-        await options.resolveAccountSnapshot(params),
-      ),
+      buildResolvedComputedAccountStatusSnapshot(params, await resolveAccountSnapshot(params)),
   };
 }
 

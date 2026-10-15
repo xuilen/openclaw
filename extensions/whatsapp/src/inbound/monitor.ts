@@ -1,6 +1,6 @@
 import type { WAMessageKey, WASocket } from "baileys";
 import { getChildLogger } from "openclaw/plugin-sdk/logging-core";
-import { createSubsystemLogger, defaultRuntime } from "openclaw/plugin-sdk/runtime-env";
+import { createSubsystemLogger } from "openclaw/plugin-sdk/runtime-env";
 import { createWaSocket, waitForWaConnection } from "../session.js";
 import { resolveWhatsAppSocketTiming, type WhatsAppSocketTimingOptions } from "../socket-timing.js";
 import {
@@ -13,15 +13,10 @@ import {
   type WhatsAppGroupMetadataCache,
 } from "./group-metadata-cache.js";
 import { closeInboundMonitorSocket } from "./lifecycle.js";
+import { logWhatsAppVerbose } from "./logging.js";
 import { createWhatsAppMessageDeliveryCoordinator } from "./message-delivery.js";
 import { createWebSendApi } from "./send-api.js";
 import { createWhatsAppAttachedSocketSession } from "./socket-session.js";
-
-function logWhatsAppVerbose(enabled: boolean | undefined, message: string) {
-  if (enabled) {
-    defaultRuntime.log(message);
-  }
-}
 
 type MonitorWebInboxOptions = Omit<
   Parameters<typeof createWhatsAppMessageDeliveryCoordinator>[0],

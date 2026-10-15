@@ -627,14 +627,6 @@ export function createChannelProgressDraftGate(params: {
     started = true;
     const nextStart = Promise.resolve()
       .then(params.onStart)
-      .then(() => {
-        if (disposed) {
-          started = false;
-        }
-        if (startPromise === nextStart) {
-          startPromise = undefined;
-        }
-      })
       .catch((error: unknown) => {
         if (startPromise === nextStart) {
           startPromise = undefined;

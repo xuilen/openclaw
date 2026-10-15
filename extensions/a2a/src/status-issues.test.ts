@@ -25,10 +25,9 @@ describe("collectA2aStatusIssues", () => {
     expect(issues[0]?.fix).toContain("outboundToken");
   });
 
-  it("skips disabled accounts and malformed rows", () => {
+  it("skips disabled accounts", () => {
     expect(
       collectA2aStatusIssues([snapshot({ enabled: false, unresolvedPeers: ["lost"] })]),
     ).toEqual([]);
-    expect(collectA2aStatusIssues([null as never, "x" as never])).toEqual([]);
   });
 });

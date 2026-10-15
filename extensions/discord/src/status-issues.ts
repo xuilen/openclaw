@@ -5,7 +5,6 @@ import type {
 import {
   appendMatchMetadata,
   isRecord,
-  readAccountStatusSnapshot,
   resolveEnabledConfiguredAccountId,
 } from "openclaw/plugin-sdk/status-helpers";
 import {
@@ -52,16 +51,7 @@ export function collectDiscordStatusIssues(
   accounts: ChannelAccountSnapshot[],
 ): ChannelStatusIssue[] {
   const issues: ChannelStatusIssue[] = [];
-  for (const entry of accounts) {
-    const account = readAccountStatusSnapshot(entry, [
-      "application",
-      "audit",
-      "groupPolicy",
-      "guildsConfigured",
-    ]);
-    if (!account) {
-      continue;
-    }
+  for (const account of accounts) {
     const accountId = resolveEnabledConfiguredAccountId(account);
     if (!accountId) {
       continue;

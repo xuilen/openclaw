@@ -353,27 +353,11 @@ export function createStatusReactionController(params: {
       return;
     }
 
-    const alreadyInitial = currentEmoji === initialEmoji;
-    const pendingBeforeClear = pendingEmoji;
-    const hadDebouncedPending = debounceTimer !== null;
-    const hasExtraActiveEmoji = Array.from(activeEmojis).some((emoji) => emoji !== initialEmoji);
     clearActivityTimers();
-    if (
-      !finished &&
-      alreadyInitial &&
-      (!pendingBeforeClear || hadDebouncedPending) &&
-      !hasExtraActiveEmoji
-    ) {
-      pendingEmoji = "";
-      return;
-    }
-    if (!finished && pendingBeforeClear === initialEmoji && !hadDebouncedPending) {
-      await chainPromise;
-      return;
-    }
-
     await enqueue(async () => {
-      await applyEmoji(initialEmoji);
+      if (currentEmoji !== initialEmoji) {
+        await applyEmoji(initialEmoji);
+      }
       await removeActiveEmojis({ keepEmoji: initialEmoji });
       pendingEmoji = "";
     });

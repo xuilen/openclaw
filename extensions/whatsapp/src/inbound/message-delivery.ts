@@ -6,7 +6,7 @@ import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
 import { createDeferred } from "openclaw/plugin-sdk/extension-shared";
 import { getChildLogger } from "openclaw/plugin-sdk/logging-core";
 import { parseStrictFiniteNumber } from "openclaw/plugin-sdk/number-runtime";
-import { defaultRuntime, createSubsystemLogger } from "openclaw/plugin-sdk/runtime-env";
+import { createSubsystemLogger } from "openclaw/plugin-sdk/runtime-env";
 import { raceWithTimeout } from "openclaw/plugin-sdk/time-runtime";
 import { maybeResolveWhatsAppApprovalReaction } from "../approval-reactions.js";
 import { resolveComparableIdentity } from "../identity.js";
@@ -25,6 +25,7 @@ import {
   type WhatsAppReadReceiptTarget,
 } from "./durable-receive.js";
 import type { WhatsAppGroupMetadataCacheOwner } from "./group-metadata-cache.js";
+import { logWhatsAppVerbose } from "./logging.js";
 import {
   createWhatsAppInboundMessageDebouncer,
   type WhatsAppQueuedInboundMessage,
@@ -54,13 +55,6 @@ function parseWhatsAppTimestampSeconds(value: unknown): number | undefined {
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function logWhatsAppVerbose(enabled: boolean | undefined, message: string) {
-  if (!enabled) {
-    return;
-  }
-  defaultRuntime.log(message);
 }
 
 function recordAcceptedInboundActivity(accountId: string): void {

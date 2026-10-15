@@ -12,7 +12,7 @@ import { assistantMediaPolicyKey } from "./chat-message-media.ts";
 import { selectSessionWorkspacePreview } from "./chat-session-workspace-state.ts";
 import { openSessionWorkspaceFile, revealSessionWorkspaceFile } from "./chat-session-workspace.ts";
 import type { SidebarContent } from "./chat-sidebar-content-types.ts";
-import { ChatToolOutput } from "./chat-tool-output.ts";
+import { ChatToolOutput } from "./chat-tool-output-view.tsx";
 
 type Props = {
   chat: ChatProps;

@@ -17,7 +17,7 @@ import type {
   ToolOutputSidebarContent,
 } from "./chat-sidebar-content-types.ts";
 import { renderToolCard } from "./chat-tool-cards.test-support.tsx";
-import { ChatToolOutput } from "./chat-tool-output.ts";
+import { ChatToolOutput } from "./chat-tool-output-view.tsx";
 import { renderToolFixture } from "./chat-tool-render.test-support.ts";
 
 type Panel = HTMLElement & {

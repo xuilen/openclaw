@@ -23,7 +23,6 @@ import {
 } from "../test-helpers/solid-application-context.tsx";
 import { waitForSolid } from "../test-helpers/solid-settle.ts";
 import { ViewerAvatar } from "./solid/viewer-facepile.tsx";
-import "./solid/viewer-facepile.tsx";
 
 afterEach(() => {
   cleanupSolid();

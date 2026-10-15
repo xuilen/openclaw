@@ -2,7 +2,13 @@ import type {
   ChannelAccountSnapshot,
   ChannelStatusIssue,
 } from "openclaw/plugin-sdk/channel-contract";
+import {
+  readAccountStatusSnapshot,
+  resolveEnabledConfiguredAccountId,
+} from "openclaw/plugin-sdk/status-helpers";
 import { filterStringEntries } from "openclaw/plugin-sdk/string-coerce-runtime";
+
+const A2A_ACCOUNT_STATUS_FIELDS = ["unresolvedPeers", "unresolvedOutboundPeers"] as const;
 
 /**
  * Surfaces peers that config loading left unusable because a `${VAR}` credential
@@ -11,10 +17,14 @@ import { filterStringEntries } from "openclaw/plugin-sdk/string-coerce-runtime";
  */
 export function collectA2aStatusIssues(accounts: ChannelAccountSnapshot[]): ChannelStatusIssue[] {
   const issues: ChannelStatusIssue[] = [];
-  for (const account of accounts) {
+  for (const entry of accounts) {
+    const account = readAccountStatusSnapshot(entry, A2A_ACCOUNT_STATUS_FIELDS);
+    if (!account) {
+      continue;
+    }
     // A fully withheld channel reports configured=false, so only enabled accounts are skipped here.
-    const { accountId } = account;
-    if (account.enabled === false) {
+    const accountId = resolveEnabledConfiguredAccountId(account) ?? account.accountId;
+    if (account.enabled === false || typeof accountId !== "string" || !accountId) {
       continue;
     }
     const inbound = filterStringEntries(account.unresolvedPeers).filter(Boolean);

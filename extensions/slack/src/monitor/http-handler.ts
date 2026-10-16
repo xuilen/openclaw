@@ -27,7 +27,7 @@ export function registerSlackHttpHandler(params: {
       if (new URL(req.url ?? "/", "http://localhost").pathname !== params.path) {
         return false;
       }
-      await params.handler(req, res);
+      return params.handler(req, res);
     },
   });
 }

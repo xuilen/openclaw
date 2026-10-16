@@ -1,8 +1,7 @@
 import {
-  getSessionBindingService as getSdkSessionBindingService,
   registerSessionBindingAdapterV2 as registerSdkSessionBindingAdapter,
   type SessionBindingAdapterV2,
-} from "openclaw/plugin-sdk/session-binding-runtime";
+} from "openclaw/plugin-sdk/thread-bindings-runtime";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { withPluginRuntimePluginScope } from "../../plugins/runtime/gateway-request-scope.js";
 import { createDeferredCore } from "../../shared/deferred.js";
@@ -120,7 +119,7 @@ describe("awaited binding read ownership", () => {
 
     const adapter = new Adapter();
     registerSdkSessionBindingAdapter(adapter);
-    const service = getSdkSessionBindingService();
+    const service = getSessionBindingService();
     const scope = { channel: "external", accountId: "default" };
     expect(service.getCapabilities(scope)).toMatchObject({
       adapterAvailable: true,

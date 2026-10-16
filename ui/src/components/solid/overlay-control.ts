@@ -1,7 +1,9 @@
-import { createEffect, onCleanup, untrack } from "solid-js";
+import { insert, type JSX } from "@solidjs/web";
+import { createEffect, createRoot, getOwner, onCleanup, runWithOwner, untrack } from "solid-js";
 import type { Overlay } from "../overlay-lifecycle.ts";
 
 type OverlayControlProps = {
+  lazy?: boolean | "while-open";
   open?: boolean;
   disabled?: boolean;
   onOpenChange?(open: boolean): void;
@@ -10,7 +12,22 @@ type OverlayControlProps = {
 };
 
 /** Controlled values and veto callbacks share the native overlay's accepted-open authority. */
-export function useOverlayControl(overlay: Overlay, props: OverlayControlProps) {
+export function useOverlayControl(
+  overlay: Overlay,
+  props: OverlayControlProps,
+  renderBody?: () => JSX.Element,
+) {
+  const owner = getOwner();
+  const lazy = untrack(() => props.lazy);
+  let disposeBody: (() => void) | undefined;
+  const clearBody = () => {
+    if (disposeBody) {
+      disposeBody();
+      disposeBody = undefined;
+      overlay.surface.replaceChildren();
+    }
+  };
+  onCleanup(clearBody);
   let mounted = false;
   const syncOpen = (open: boolean) => {
     if (open === overlay.open) {
@@ -29,9 +46,12 @@ export function useOverlayControl(overlay: Overlay, props: OverlayControlProps) 
     },
   );
   onCleanup(() => overlay.dispose());
-  return (onConnect: () => void, onOpen?: (open: boolean) => void) => {
+  const connect = (onConnect: () => void, onOpen?: (open: boolean) => void) => {
     mounted = true;
     const stopOpen = overlay.subscribe((open) => {
+      if (!open && lazy === "while-open") {
+        clearBody();
+      }
       onOpen?.(open);
       untrack(() => props.onOpenChange?.(open));
     });
@@ -39,6 +59,20 @@ export function useOverlayControl(overlay: Overlay, props: OverlayControlProps) 
       if (event.target === overlay.surface) {
         if (props.disabled) {
           event.preventDefault();
+        }
+        if (lazy && renderBody && !disposeBody && !event.defaultPrevented) {
+          // Admission and initial keyboard focus need the body synchronously.
+          runWithOwner(owner, () => {
+            disposeBody = createRoot((dispose) => {
+              insert(overlay.surface, renderBody());
+              return dispose;
+            });
+          });
+          queueMicrotask(() => {
+            if (!overlay.open && lazy === "while-open") {
+              clearBody();
+            }
+          });
         }
         props.onBeforeShow?.(event);
       }
@@ -61,4 +95,5 @@ export function useOverlayControl(overlay: Overlay, props: OverlayControlProps) 
       overlay.surface.removeEventListener("overlay-hide", hide);
     };
   };
+  return { connect, bodyMounted: () => Boolean(disposeBody) };
 }

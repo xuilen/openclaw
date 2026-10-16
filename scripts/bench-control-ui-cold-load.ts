@@ -30,6 +30,7 @@ import {
   summarizeColdLoadTrace,
   summarizeCpuProfile,
 } from "./lib/control-ui-cold-load-trace.ts";
+import { probeColdLoadOverlays } from "./lib/control-ui-overlay-probe.ts";
 import { warmReloadProbe } from "./lib/control-ui-warm-reload-probe.ts";
 
 function summarizeResponseTasks(raw: unknown[]) {
@@ -161,6 +162,7 @@ function summarizeSidebarWindows(
 const { values } = parseArgs({
   options: {
     "warm-reload": { type: "boolean", default: false },
+    "overlay-probe": { type: "boolean", default: false },
     untraced: { type: "boolean", default: false },
     "probe-dir": { type: "string" },
     "live-events": { type: "boolean", default: false },
@@ -813,6 +815,9 @@ try {
         );
       }
     }
+    const overlays = values["overlay-probe"]
+      ? await probeColdLoadOverlays(page, artifactDir, run)
+      : undefined;
     await cdp.detach();
     const result = {
       run: run + 1,
@@ -828,6 +833,7 @@ try {
       live,
       streaming,
       warmReload,
+      overlays,
     };
     results.push(result);
     console.log(JSON.stringify(result));

@@ -5,7 +5,7 @@
   "description": "Shared instruction files for selected OpenClaw agents",
   "type": "module",
   "dependencies": {
-    "@openclaw/fs-safe": "0.26.5"
+    "@openclaw/fs-safe": "0.26.6"
   },
   "devDependencies": {
     "@openclaw/plugin-sdk": "workspace:*"

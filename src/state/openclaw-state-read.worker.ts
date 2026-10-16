@@ -26,7 +26,9 @@ serveOwnedWorkerTasks(
     let sourceAdmitted: true | undefined;
     let nativeCleanupFailure: OpenClawStateReadReply["nativeCleanupFailure"];
     try {
-      installDatabaseEngineSelection({ input: input.context.databaseEngineInput });
+      if (input.context.databaseEngineSelection) {
+        installDatabaseEngineSelection(input.context.databaseEngineSelection);
+      }
       const leaseReader =
         input.command.type === "gatewayOwnerLease.read"
           ? await import("../infra/gateway-owner-lease.worker.js")

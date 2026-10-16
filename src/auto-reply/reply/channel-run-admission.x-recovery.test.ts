@@ -12,6 +12,7 @@ import type {
 import { createHostChannelIngressRuntime } from "../../channels/message-access/runtime.js";
 import type { OpenClawConfig } from "../../config/types.openclaw.js";
 import type { GatewayRequestContext } from "../../gateway/server-methods/types.js";
+import { PluginInstance } from "../../plugins/plugin-instance.js";
 import type { PluginRuntime } from "../../plugins/runtime/types.js";
 import { resolveAgentRoute } from "../../routing/resolve-route.js";
 import { loadBundledPluginFacade } from "../../test-utils/bundled-plugin-public-surface.js";
@@ -68,6 +69,7 @@ const {
       post: XPost;
       cfg: OpenClawConfig;
       readConfig: () => OpenClawConfig;
+      runtime: PluginRuntime;
       route: { agentId: string; sessionKey: string };
       assertActive: () => void;
     },
@@ -84,6 +86,119 @@ beforeAll(async () => {
 });
 
 describe("X ingress authorization through reply runner", () => {
+  // Runs first: earlier cases set X's runtime outside any plugin instance.
+  it("keeps publication guards current when the host runs them outside X's plugin frame", async () => {
+    await withOpenClawTestState({ label: "x-runtime-frame" }, async (testState) => {
+      const cfg: OpenClawConfig = {
+        agents: { entries: { main: {} } },
+        channels: {
+          x: {
+            userId: "100",
+            allowFrom: [],
+            groupPolicy: "allowlist",
+            autoPublishWorkSessions: true,
+          },
+        },
+      };
+      const post = { id: "501", author_id: "30", conversation_id: "500", text: "@bot help" };
+      const gateway = { getRuntimeConfig: () => cfg } as GatewayRequestContext;
+      const owner = { channelId: "x", isLive: () => true, resolveGatewayContext: () => gateway };
+      const hostIngress = createHostChannelIngressRuntime(owner);
+      const runtime = {
+        state: { openKeyedStore: createKeyedState(), resolveStateDir: () => testState.stateDir },
+        channel: { inbound: { ingress: { resolveStable: hostIngress.resolveStable } } },
+      } as unknown as PluginRuntime;
+      const route = resolveAgentRoute({
+        cfg,
+        channel: "x",
+        accountId: "default",
+        peer: { kind: "group", id: "500" },
+      });
+      // Like the loader, set the runtime inside X's instance: its store slot is instance-owned.
+      const instance = new PluginInstance("x");
+      try {
+        instance.run(() => setXRuntime(runtime));
+        const context = await instance.run(async () => {
+          const allowlist = openXAllowlist(runtime);
+          await allowlist.put("default", {
+            userId: "30",
+            username: "fixture",
+            name: "Fixture",
+            addedBy: "test",
+            addedAt: 0,
+          });
+          const snapshot = await allowlist.readSnapshot("default");
+          const authorization = await resolveXIngress(
+            "default",
+            post,
+            cfg,
+            {
+              agentId: route.agentId,
+              sessionKey: route.sessionKey,
+              messageId: post.id,
+              inboundEventKind: "user_request",
+            },
+            {
+              audience: "public",
+              assertCurrent: snapshot.assertCurrent,
+              prepare: createXPublicationPreparation({
+                runtime,
+                accountId: "default",
+                post,
+                cfg,
+                readConfig: () => cfg,
+                route,
+                assertActive: () => {},
+              }),
+            },
+          );
+          return await createHostChannelInboundEventContextBuilder(
+            buildChannelInboundEventContext,
+            owner,
+          )({
+            channel: "x",
+            accountId: "default",
+            messageId: post.id,
+            channelIngress: authorization.ingress,
+            from: "x:group:500",
+            sender: { id: "30" },
+            conversation: { kind: "group", id: "500" },
+            route: { agentId: route.agentId, routeSessionKey: route.sessionKey },
+            reply: { to: "x:501" },
+            message: { body: post.text, rawBody: post.text },
+          });
+        });
+        const followup = createFollowupRun();
+        followup.run.sessionKey = route.sessionKey;
+        followup.run.config = cfg;
+        copyChildSessionPublication(context, followup.run);
+        state.runWithModelFallbackMock.mockImplementation((params) =>
+          runWithModelFallback({
+            ...params,
+            skipAuthProfileRuntime: true,
+            manifestPlugins: [],
+            run: async (provider, model, options) => params.run(provider, model, options),
+          }),
+        );
+        const model = vi.fn();
+        state.runEmbeddedAgentMock.mockImplementation(async (params) => {
+          const admitted = await params.preparedRunAdmission.admit("embedded");
+          // sessions_spawn and sessions.create run this guard from the agent run's frame.
+          readChildSessionPublication(admitted.operationalRunInstance)!.assertCurrent();
+          model();
+          return { payloads: [{ text: "Authorized reply" }], meta: { durationMs: 0 } };
+        });
+        const result = await executeAgentTurn(
+          createMinimalRunAgentTurnParams({ followupRun: followup, sessionCtx: context }),
+        );
+        expect(result.outcome).toMatchObject({ kind: "settled", status: "ok" });
+        expect(model).toHaveBeenCalledOnce();
+      } finally {
+        await instance.dispose();
+      }
+    });
+  });
+
   it.each([
     "unrelated mutation",
     "revoked author",
@@ -143,6 +258,7 @@ describe("X ingress authorization through reply runner", () => {
           audience: "public" as const,
           assertCurrent: snapshot.assertCurrent,
           prepare: createXPublicationPreparation({
+            runtime,
             accountId: "default",
             post,
             cfg,

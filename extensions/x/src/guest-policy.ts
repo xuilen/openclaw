@@ -1,3 +1,4 @@
+import type { PluginRuntime } from "openclaw/plugin-sdk/core";
 import type { ResolvedXAccount } from "./accounts.js";
 import { normalizeXUserId, readPublishedXAllowlist, type XGitHubEntry } from "./allowlist.js";
 import type { XUser } from "./api.js";
@@ -17,11 +18,12 @@ export function resolveXGuestSettings(account: ResolvedXAccount) {
 export function resolveXSenderTier(
   account: ResolvedXAccount,
   senderId: string | undefined | null,
+  runtime: PluginRuntime = getXRuntime(),
 ): XSenderTier {
   const id = senderId && normalizeXUserId(senderId);
   const allowed = [
     ...(account.config.allowFrom ?? []),
-    ...readPublishedXAllowlist(getXRuntime(), account.accountId, account.config.verifiedFromGitHub),
+    ...readPublishedXAllowlist(runtime, account.accountId, account.config.verifiedFromGitHub),
   ];
   return id && allowed.some((entry) => normalizeXUserId(entry) === id) ? "maintainer" : "guest";
 }

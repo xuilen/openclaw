@@ -3,6 +3,7 @@ import type {
   ResolveStableChannelMessageIngressParams,
 } from "openclaw/plugin-sdk/channel-ingress-runtime";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
+import type { PluginRuntime } from "openclaw/plugin-sdk/core";
 import { resolveAgentRoute } from "openclaw/plugin-sdk/routing";
 import { resolveXAccount } from "./accounts.js";
 import { normalizeXUserId, openXAllowlist, XAllowlistChangedError } from "./allowlist.js";
@@ -12,8 +13,13 @@ import { getXRuntime } from "./runtime.js";
 
 export const xMentionFacts = { canDetectMention: true, wasMentioned: true };
 
-/** Renew only the source permission, never the admitted run or its selected route. */
+/**
+ * Renew only the source permission, never the admitted run or its selected route.
+ * The host runs this from the source turn, outside X's plugin invocation frame, so
+ * it uses the monitor's captured runtime rather than an ambient runtime-store lookup.
+ */
 export function createXPublicationPreparation(params: {
+  runtime: PluginRuntime;
   accountId: string;
   post: XPost;
   cfg: OpenClawConfig;
@@ -49,7 +55,14 @@ export function createXPublicationPreparation(params: {
         return null;
       }
       try {
-        const authorization = await resolveXIngress(params.accountId, params.post, cfg);
+        const authorization = await resolveXIngress(
+          params.accountId,
+          params.post,
+          cfg,
+          undefined,
+          undefined,
+          params.runtime,
+        );
         try {
           params.assertActive();
         } catch {
@@ -88,8 +101,8 @@ export async function resolveXIngress(
   cfg: OpenClawConfig,
   contextBinding?: ChannelIngressContextBinding,
   childSessionPublication?: ResolveStableChannelMessageIngressParams["childSessionPublication"],
+  core: PluginRuntime = getXRuntime(),
 ) {
-  const core = getXRuntime();
   const account = resolveXAccount(cfg, accountId);
   const snapshot = await openXAllowlist(core).readSnapshot(
     accountId,
@@ -98,7 +111,7 @@ export async function resolveXIngress(
   // 2026.9.8 only invokes readStoreAllowFrom for DMs. This admin-owned store
   // supplies raw group entries; the host still owns all matching and policy.
   const groupAllowFrom = [...(account.config.allowFrom ?? []), ...snapshot.allowFrom];
-  const tier = resolveXSenderTier(account, post.author_id);
+  const tier = resolveXSenderTier(account, post.author_id, core);
   const guestsEnabled = resolveXGuestSettings(account).enabled;
   const ingress = await core.channel.inbound.ingress.resolveStable({
     channelId: "x",
@@ -126,12 +139,9 @@ export async function resolveXIngress(
       activation: { requireMention: true, allowTextCommands: false },
     },
   });
-  const assertCurrent = () => {
-    snapshot.assertCurrent();
-    if (getXRuntime() !== core) {
-      throw new Error("X runtime changed during authorization");
-    }
-  };
+  // Host publication guards call this outside X's invocation frame; never re-resolve
+  // the runtime here. Monitor-owned guards separately retire replaced runtimes.
+  const assertCurrent = () => snapshot.assertCurrent();
   assertCurrent();
   const githubEntry = snapshot.github?.entries.find((entry) => entry.xUserId === post.author_id);
   return {

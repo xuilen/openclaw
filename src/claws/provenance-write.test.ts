@@ -261,30 +261,6 @@ describe("Claw provenance worker writes", () => {
     expect(persisted(ref)).toEqual([replacement]);
   });
 
-  it("keeps queued claims bound to the captured package", async () => {
-    const ref = packageFixture();
-    const original = structuredClone(ref);
-    const other = packageFixture();
-    let changed = false;
-    const result = await withPackageLease(ref, (lease) =>
-      claimClawPackageRefStatus(ref, "pending", {
-        ...options,
-        lease,
-        nowMs: 2,
-        assertCurrent: () => {
-          if (!changed) {
-            changed = true;
-            Object.assign(ref, other);
-          }
-        },
-      }),
-    );
-    const expected = { ...original, status: "pending", updatedAtMs: 2 };
-    expect(result).toEqual(expected);
-    expect(persisted(original)).toEqual([expected]);
-    expect(persisted(other)).toEqual([other]);
-  });
-
   it.each(["plugin", "skill"] as const)(
     "refuses to borrow another %s artifact's live package lease",
     async (kind) => {

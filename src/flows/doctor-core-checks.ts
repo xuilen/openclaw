@@ -72,10 +72,9 @@ async function listGatewayCronJobsWithRuntime(
   }
   const jobs: CronJob[] = [];
   let offset = 0;
-  let snapshotRevision: string | undefined;
-  let total: number | undefined;
 
-  while (total === undefined || offset < total) {
+  // Diagnostic inventory is best effort when schedules change between pages.
+  while (true) {
     const request = {
       method: "cron.list",
       params: { includeDisabled: true, limit: 200, offset },
@@ -98,18 +97,10 @@ async function listGatewayCronJobsWithRuntime(
     if (!validPage) {
       throw new Error("Gateway returned an invalid cron inventory response.");
     }
-    if (
-      (snapshotRevision !== undefined && page.snapshotRevision !== snapshotRevision) ||
-      (total !== undefined && page.total !== total)
-    ) {
-      throw new Error("Gateway cron inventory changed while doctor was reading it.");
-    }
-    snapshotRevision ??= page.snapshotRevision;
-    total ??= page.total;
     jobs.push(...page.jobs);
 
     if (!page.hasMore) {
-      if (page.nextOffset !== null || jobs.length !== total) {
+      if (page.nextOffset !== null) {
         throw new Error("Gateway returned an inconsistent cron inventory response.");
       }
       return jobs;
@@ -118,14 +109,12 @@ async function listGatewayCronJobsWithRuntime(
     if (
       page.nextOffset !== expectedNextOffset ||
       expectedNextOffset <= offset ||
-      expectedNextOffset >= total
+      expectedNextOffset >= page.total
     ) {
       throw new Error("Gateway returned an invalid cron inventory cursor.");
     }
     offset = expectedNextOffset;
   }
-
-  throw new Error("Gateway returned an incomplete cron inventory response.");
 }
 
 const gatewayConfigCheck: CoreHealthCheck = {

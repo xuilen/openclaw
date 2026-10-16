@@ -80,8 +80,7 @@ export async function resolveSkillDispatchTools(
 ): Promise<AnyAgentTool[]> {
   const channel =
     resolveGatewayMessageChannel(params.message.surface) ??
-    resolveGatewayMessageChannel(params.message.provider) ??
-    undefined;
+    resolveGatewayMessageChannel(params.message.provider);
   const {
     agentId: resolvedAgentId,
     globalPolicy,
@@ -176,7 +175,7 @@ export async function resolveSkillDispatchTools(
     agentChannel: channel,
     agentAccountId: params.message.accountId,
     agentTo: params.message.originatingTo ?? params.message.to,
-    agentThreadId: params.message.messageThreadId ?? undefined,
+    agentThreadId: params.message.messageThreadId,
     nativeChannelId: params.message.nativeChannelId,
     agentGroupId: groupId,
     agentGroupChannel: params.sessionEntry?.groupChannel,

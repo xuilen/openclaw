@@ -11,12 +11,13 @@ export async function updateSkillConfigEntry(params: {
   const committed = await mutateConfigFileWithRetry<Record<string, unknown>>({
     afterWrite: { mode: "auto" },
     mutate: (draft) => {
-      const entries = { ...draft.skills?.entries };
-      const current = { ...entries[params.skillKey] };
-      if (typeof params.enabled === "boolean") {
+      const skills = (draft.skills ??= {});
+      const entries = (skills.entries ??= {});
+      const current = (entries[params.skillKey] ??= {});
+      if (params.enabled !== undefined) {
         current.enabled = params.enabled;
       }
-      if (typeof params.apiKey === "string") {
+      if (params.apiKey !== undefined) {
         const trimmed = normalizeSecretInput(params.apiKey);
         if (trimmed === REDACTED_SENTINEL) {
           // Keep the stored secret when a client round-trips a redacted response value.
@@ -26,8 +27,8 @@ export async function updateSkillConfigEntry(params: {
           delete current.apiKey;
         }
       }
-      if (params.env && typeof params.env === "object") {
-        const nextEnv = { ...current.env };
+      if (params.env) {
+        const nextEnv = (current.env ??= {});
         for (const [key, value] of Object.entries(params.env)) {
           const trimmedKey = key.trim();
           if (!trimmedKey) {
@@ -43,10 +44,7 @@ export async function updateSkillConfigEntry(params: {
             nextEnv[trimmedKey] = trimmedVal;
           }
         }
-        current.env = nextEnv;
       }
-      entries[params.skillKey] = current;
-      draft.skills = { ...draft.skills, entries };
       return current;
     },
   });

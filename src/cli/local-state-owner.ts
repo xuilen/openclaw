@@ -61,7 +61,7 @@ export async function runWithLocalStateOwner<T>(params: {
 }): Promise<T> {
   localOwnerAssertion.getStore()?.();
   const databasePortRecovery = params.databasePortRecovery
-    ? Object.freeze({ ...params.databasePortRecovery })
+    ? { ...params.databasePortRecovery }
     : undefined;
   const selectedEnv = { ...process.env };
   const selectedStateDir = resolveStateDir(selectedEnv);
@@ -71,8 +71,7 @@ export async function runWithLocalStateOwner<T>(params: {
     OPENCLAW_STATE_DIR: stateDir,
     OPENCLAW_CONFIG_PATH: resolveConfigPath(selectedEnv, selectedStateDir),
   };
-  const input =
-    typeof params.params === "function" ? params.params : structuredClone(params.params);
+  const input = params.params;
   const scopes: OperatorScope[] = [...(params.scopes ?? ["operator.admin"])];
   const [
     {
@@ -175,8 +174,7 @@ export async function runWithLocalStateOwner<T>(params: {
     }
     const { callGateway, isGatewayClientRequestError } = await import("../gateway/call.js");
     let dispatched = false;
-    const gatewayInput =
-      typeof input === "function" ? structuredClone(await input(controller.signal)) : input;
+    const gatewayInput = typeof input === "function" ? await input(controller.signal) : input;
     try {
       assertTargetCurrent();
       // The transport owns reduced connection config; full runtime loading can write state.

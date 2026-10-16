@@ -131,7 +131,7 @@ describe("CORE_HEALTH_CHECKS", () => {
   });
 
   it.each([false, true])(
-    "reads cron pages only from one stable inventory (changed=%s)",
+    "reads cron inventory pages even if schedules change during diagnostics (changed=%s)",
     async (changed) => {
       vi.stubEnv("OPENCLAW_EXPERIMENTAL_CLAWS", "1");
       const jobs = [{ id: "job-1" }, { id: "job-2" }];
@@ -156,22 +156,16 @@ describe("CORE_HEALTH_CHECKS", () => {
         runtime,
         cfg: {},
       });
-      if (changed) {
-        await expect(result).rejects.toThrow(
-          "Gateway cron inventory changed while doctor was reading it.",
+      await expect(result).resolves.toEqual([]);
+      expect(listedJobs).toEqual(jobs);
+      for (const offset of [0, 1]) {
+        expect(mocks.callGateway).toHaveBeenNthCalledWith(
+          offset + 1,
+          expect.objectContaining({
+            method: "cron.list",
+            params: { includeDisabled: true, limit: 200, offset },
+          }),
         );
-      } else {
-        await expect(result).resolves.toEqual([]);
-        expect(listedJobs).toEqual(jobs);
-        for (const offset of [0, 1]) {
-          expect(mocks.callGateway).toHaveBeenNthCalledWith(
-            offset + 1,
-            expect.objectContaining({
-              method: "cron.list",
-              params: { includeDisabled: true, limit: 200, offset },
-            }),
-          );
-        }
       }
     },
   );

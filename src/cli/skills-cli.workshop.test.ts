@@ -188,24 +188,41 @@ describe("skills workshop cli", () => {
       },
     });
 
-  it("archives locally as the user without a Gateway while holding the Gateway lock", async () => {
+  it.each([
+    {
+      method: "archive",
+      flag: "--reason",
+      value: "superseded",
+      params: { name: "release-notes", reason: "superseded" },
+      output: "Archived release-notes. Undo with:",
+    },
+    {
+      method: "restore",
+      flag: "--version",
+      value: "saved-v1",
+      params: { name: "release-notes", versionId: "saved-v1" },
+      output: "Restored release-notes.\n",
+    },
+  ])("runs $method locally as the user while holding the Gateway lock", async (test) => {
     const release = vi.fn();
     mocks.acquireGatewayLock.mockResolvedValue({
       run: (action: () => unknown) => action(),
       release,
     });
-    mocks.archiveWorkshopSkill.mockResolvedValue(change);
+    const mutate =
+      test.method === "archive" ? mocks.archiveWorkshopSkill : mocks.restoreWorkshopSkill;
+    mutate.mockResolvedValue(change);
 
-    await runCli(["skills", "workshop", "archive", "release-notes", "--reason", "superseded"]);
+    await runCli(["skills", "workshop", test.method, "release-notes", test.flag, test.value]);
 
     expect(mocks.callGateway).not.toHaveBeenCalled();
-    expect(mocks.archiveWorkshopSkill).toHaveBeenCalledWith(
+    expect(mutate).toHaveBeenCalledWith(
       { config: mocks.config, agentId: "main", actor: "user" },
-      { name: "release-notes", reason: "superseded" },
+      test.params,
     );
     expect(release).toHaveBeenCalledOnce();
     expect(mocks.defaultRuntime.writeStdout).toHaveBeenCalledWith(
-      expect.stringContaining("Archived release-notes. Undo with:"),
+      expect.stringContaining(test.output),
     );
   });
 

@@ -36,7 +36,7 @@ export async function mutateClawRemovalJournal(
   };
   assertSourceCurrent();
   const command = {
-    ...structuredClone(input),
+    ...input,
     nonce: randomUUID(),
     sessionStoreSafety:
       input.request.phase === "begin"

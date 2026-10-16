@@ -85,7 +85,7 @@ export function normalizeDirectCronDeliveryPayloads(params: {
       params.summary,
       params.synthesizedText,
       ...params.deliveryPayloads.map((payload) => payload.text),
-    ].some((text) => typeof text === "string" && text.trim().length > 0);
+    ].some((text) => text?.trim());
     return {
       kind: "suppress",
       reason: channelSuppressed ? "channel_transform" : silent ? "silent" : "empty",

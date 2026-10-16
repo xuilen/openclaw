@@ -145,7 +145,7 @@ export async function withClawAgentConfigRemoval<T>(
     deletion: AgentDeletionOperation,
   ) => Promise<T>,
 ): Promise<T> {
-  const expectedInstall = structuredClone(params.expectedInstall);
+  const expectedInstall = params.expectedInstall;
   const context = captureOpenClawStateWorkerContext({
     ...params.stateDatabase,
     path: params.stateDatabase?.database?.path ?? params.stateDatabase?.path,

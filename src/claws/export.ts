@@ -16,7 +16,6 @@ import { resolveUserPath } from "../utils.js";
 import { digestClawBytes } from "./digest.js";
 import { readClawStatus } from "./lifecycle-state.js";
 import type { PackageRemovalDeps } from "./package-remove.js";
-import { readClawManifestFile } from "./reader.js";
 import { isPortableClawAvatar } from "./schema-portability.js";
 import { parseClawManifest, parseClawOpenClawProfile } from "./schema.js";
 import { MAX_CLAW_MANIFEST_BYTES, MAX_MANAGED_WORKSPACE_BYTES } from "./source-limits.js";
@@ -585,13 +584,6 @@ export async function exportClawAgent(
     if (exportedBootstrap) {
       await output.write("BOOTSTRAP.md", exportedBootstrap, { overwrite: false });
       filesWritten.push("BOOTSTRAP.md");
-    }
-    const reread = await readClawManifestFile(target);
-    if (!reread.ok) {
-      throw new ClawExportError(
-        "export_package_invalid",
-        reread.diagnostics.map((diagnostic) => diagnostic.message).join("; "),
-      );
     }
   } catch (error) {
     await rm(target, { recursive: true, force: true }).catch(() => undefined);

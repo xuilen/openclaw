@@ -63,10 +63,10 @@ export function withAuthoredAgentRoster(
   }
   const agents: OpenClawConfigWithLegacyRoster["agents"] = { ...config.agents };
   if (Object.hasOwn(sourceAgents, "entries") && sourceAgents.entries !== undefined) {
-    agents.entries = structuredClone(sourceAgents.entries);
+    agents.entries = sourceAgents.entries;
     delete agents.list;
   } else if (Object.hasOwn(sourceAgents, "list") && sourceAgents.list !== undefined) {
-    agents.list = structuredClone(sourceAgents.list);
+    agents.list = sourceAgents.list;
     delete agents.entries;
   } else {
     return config;

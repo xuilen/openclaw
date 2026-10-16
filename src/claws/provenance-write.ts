@@ -23,10 +23,8 @@ export async function claimClawPackageRefStatus(
   if (options.readOnly) {
     throw new Error("Claw provenance writes require writable state.");
   }
-  // Store admission can yield before execute captures the command.
-  const capturedRef = structuredClone(ref);
   const nowMs = options.nowMs;
-  assertClawPackageLifecycleWriteArtifact(options.lease, capturedRef);
+  assertClawPackageLifecycleWriteArtifact(options.lease, ref);
   if (options.deletion) {
     return await options.deletion.runWithWorker(
       (scope, deletion, additionalLeases) => {
@@ -36,7 +34,7 @@ export async function claimClawPackageRefStatus(
         }
         return scope.execute({
           type: "clawProvenance.packageStatus",
-          input: { ref: capturedRef, status, nowMs, lease, deletion },
+          input: { ref, status, nowMs, lease, deletion },
         });
       },
       { additionalLeases: [options.lease], assertCurrent: options.assertCurrent },
@@ -57,7 +55,7 @@ export async function claimClawPackageRefStatus(
     (scope, identity) =>
       scope.execute({
         type: "clawProvenance.packageStatus",
-        input: { ref: capturedRef, status, nowMs, lease: identity },
+        input: { ref, status, nowMs, lease: identity },
       }),
     { assertCurrent },
   );

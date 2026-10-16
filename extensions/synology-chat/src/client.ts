@@ -246,7 +246,9 @@ async function fetchChatUsers(
       log?.warn(`fetchChatUsers: API returned success=${result.success}, using cached data`);
     }
   } catch (error) {
-    log?.warn(`fetchChatUsers: ${formatErrorMessage(error)}, using cached data`);
+    const message = formatErrorMessage(error);
+    const fallback = message.startsWith("HTTP error — ") ? "" : ", using cached data";
+    log?.warn(`fetchChatUsers: ${message}${fallback}`);
   }
   return cached?.users ?? [];
 }
